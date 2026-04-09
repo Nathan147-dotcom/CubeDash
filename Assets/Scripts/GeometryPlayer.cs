@@ -5,10 +5,11 @@ using TMPro;
 public class GeometryPlayer : MonoBehaviour
 {
     [Header("Auto Slide")]
-    public float moveSpeed = 6f;
     public float minSpeed = 3f;
+    public float normalSpeed = 6f;
     public float maxSpeed = 12f;
-    public float speedStep = 1f;
+    private int speedLevel = 1; 
+    private float moveSpeed;
 
     [Header("Jump")]
     public float tapJumpForce = 8f;
@@ -45,7 +46,7 @@ public class GeometryPlayer : MonoBehaviour
     private Vector3 startPosition;
 
     private float tapThreshold = 0.2f;
-    private float swipeThreshold = 80f;
+    private float swipeThreshold = 50f;
 
     private int deathCount = 0;
     private float levelStartTime;
@@ -55,6 +56,9 @@ public class GeometryPlayer : MonoBehaviour
         levelStartTime = Time.time;
         startPosition = transform.position;
         rb = GetComponent<Rigidbody2D>();
+
+        speedLevel = 1;
+        moveSpeed = normalSpeed;
 
         if (chargeBarFill != null)
         {
@@ -70,6 +74,10 @@ public class GeometryPlayer : MonoBehaviour
         CheckGround();
         HandleTouchInput();
         UpdateChargeBar();
+        if (transform.position.y < -10f)
+    {
+        ResetLevel();
+    }
     }
 
     void FixedUpdate()
@@ -89,77 +97,77 @@ public class GeometryPlayer : MonoBehaviour
     {
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
     }
+void HandleTouchInput()
+{
+    if (Input.touchCount <= 0)
+        return;
 
-    void HandleTouchInput()
+    Touch touch = Input.GetTouch(0);
+
+    if (touch.phase == TouchPhase.Began)
     {
-        if (Input.touchCount <= 0)
-            return;
+        touchStartPos = touch.position;
+        holdStartTime = Time.time;
+        isHolding = true;
+        swipeDetected = false;
 
-        Touch touch = Input.GetTouch(0);
-
-        if (touch.phase == TouchPhase.Began)
+        if (isGrounded)
         {
-            touchStartPos = touch.position;
-            holdStartTime = Time.time;
-            isHolding = true;
-            swipeDetected = false;
-
-            if (isGrounded)
-            {
-                if (playerSprite != null)
-                    playerSprite.color = chargingColor;
-
-                SetActionText("Charging...");
-            }
-        }
-        else if (touch.phase == TouchPhase.Moved)
-        {
-            float horizontalDistance = touch.position.x - touchStartPos.x;
-
-            if (Mathf.Abs(horizontalDistance) > swipeThreshold)
-            {
-                swipeDetected = true;
-                isHolding = false;
-
-                if (horizontalDistance > 0f)
-                {
-                    IncreaseSpeed();
-                    SpawnSwipeSpark(touch.position, 3f);
-                }
-                else
-                {
-                    DecreaseSpeed();
-                    SpawnSwipeSpark(touch.position, -3f);
-                }
-
-                touchStartPos = touch.position;
-            }
-        }
-        else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
-        {
-            if (!swipeDetected && isGrounded)
-            {
-                float holdTime = Time.time - holdStartTime;
-
-                if (holdTime < tapThreshold)
-                {
-                    TapJump(touch.position);
-                }
-                else
-                {
-                    ChargeJump();
-                }
-            }
-
-            isHolding = false;
-
             if (playerSprite != null)
-                playerSprite.color = normalColor;
+                playerSprite.color = chargingColor;
 
-            if (chargeBarFill != null)
-                chargeBarFill.fillAmount = 0f;
+            SetActionText("Charging");
         }
     }
+    else if (touch.phase == TouchPhase.Moved)
+    {
+        if (swipeDetected)
+            return;
+
+        float horizontalDistance = touch.position.x - touchStartPos.x;
+
+        if (Mathf.Abs(horizontalDistance) > swipeThreshold)
+        {
+            swipeDetected = true;
+            isHolding = false;
+
+            if (horizontalDistance > 0f)
+            {
+                IncreaseSpeed();
+                SpawnSwipeSpark(touch.position, 8f);
+            }
+            else
+            {
+                DecreaseSpeed();
+                SpawnSwipeSpark(touch.position, -8f);
+            }
+        }
+    }
+    else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
+    {
+        if (!swipeDetected && isGrounded)
+        {
+            float holdTime = Time.time - holdStartTime;
+
+            if (holdTime < tapThreshold)
+            {
+                TapJump(touch.position);
+            }
+            else
+            {
+                ChargeJump();
+            }
+        }
+
+        isHolding = false;
+
+        if (playerSprite != null)
+            playerSprite.color = normalColor;
+
+        if (chargeBarFill != null)
+            chargeBarFill.fillAmount = 0f;
+    }
+}
 
     void TapJump(Vector2 screenPos)
     {
@@ -186,18 +194,30 @@ public class GeometryPlayer : MonoBehaviour
     }
 
     void IncreaseSpeed()
-    {
-        moveSpeed = Mathf.Clamp(moveSpeed + speedStep, minSpeed, maxSpeed);
-        UpdateSpeedUI();
-        SetActionText("Swipe Right = Faster");
-    }
+{
+    speedLevel = Mathf.Clamp(speedLevel + 1, 0, 2);
+    ApplySpeedLevel();
+    SetActionText("Right Swipe = Faster");
+}
 
-    void DecreaseSpeed()
-    {
-        moveSpeed = Mathf.Clamp(moveSpeed - speedStep, minSpeed, maxSpeed);
-        UpdateSpeedUI();
-        SetActionText("Swipe Left = Slower");
-    }
+void DecreaseSpeed()
+{
+    speedLevel = Mathf.Clamp(speedLevel - 1, 0, 2);
+    ApplySpeedLevel();
+    SetActionText("Left Swipe = Slower");
+}
+
+void ApplySpeedLevel()
+{
+    if (speedLevel == 0)
+        moveSpeed = minSpeed;
+    else if (speedLevel == 1)
+        moveSpeed = normalSpeed;
+    else
+        moveSpeed = maxSpeed;
+
+    UpdateSpeedUI();
+}
 
     void UpdateChargeBar()
     {
@@ -230,7 +250,7 @@ public class GeometryPlayer : MonoBehaviour
             return;
 
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(screenPos);
-        worldPos.z = 0f;
+        worldPos.z = -1f;
 
         Instantiate(tapSparkPrefab, worldPos, Quaternion.identity);
     }
@@ -241,7 +261,7 @@ public class GeometryPlayer : MonoBehaviour
             return;
 
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(screenPos);
-        worldPos.z = 0f;
+        worldPos.z = -1f;
 
         GameObject spark = Instantiate(swipeSparkPrefab, worldPos, Quaternion.identity);
         TouchSparkEffect effect = spark.GetComponent<TouchSparkEffect>();
@@ -280,8 +300,9 @@ void ResetLevel()
         rb.angularVelocity = 0f;
     }
 
-    moveSpeed = 6f;
-    UpdateSpeedUI();
+    speedLevel = 1;
+moveSpeed = normalSpeed;
+UpdateSpeedUI();
     SetActionText("Reset");
     
 }

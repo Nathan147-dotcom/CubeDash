@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class TouchSparkEffect : MonoBehaviour
 {
-    public float lifetime = 0.25f;
-    public float growSpeed = 2f;
+    public float lifetime = 0.4f;
+    public float growSpeed = 4f;
     public float moveSpeed = 0f;
 
     private SpriteRenderer sr;
@@ -15,9 +15,13 @@ public class TouchSparkEffect : MonoBehaviour
 
     void Update()
     {
+        
         transform.localScale += Vector3.one * growSpeed * Time.deltaTime;
+
+    
         transform.position += Vector3.right * moveSpeed * Time.deltaTime;
 
+        
         if (sr != null)
         {
             Color c = sr.color;
