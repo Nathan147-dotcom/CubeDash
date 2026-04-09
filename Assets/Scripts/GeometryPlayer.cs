@@ -27,6 +27,7 @@ public class GeometryPlayer : MonoBehaviour
 
     public TextMeshProUGUI speedText;
     public TextMeshProUGUI actionText;
+    public TextMeshProUGUI resultText;
     public Image chargeBarFill;
 
     [Header("Spark Prefabs")]
@@ -37,6 +38,7 @@ public class GeometryPlayer : MonoBehaviour
     private bool isGrounded;
     private bool isHolding;
     private bool swipeDetected;
+    private bool levelFinished = false;
 
     private float holdStartTime;
     private Vector2 touchStartPos;
@@ -45,8 +47,12 @@ public class GeometryPlayer : MonoBehaviour
     private float tapThreshold = 0.2f;
     private float swipeThreshold = 80f;
 
+    private int deathCount = 0;
+    private float levelStartTime;
+
     void Start()
     {
+        levelStartTime = Time.time;
         startPosition = transform.position;
         rb = GetComponent<Rigidbody2D>();
 
@@ -72,9 +78,12 @@ public class GeometryPlayer : MonoBehaviour
     }
 
     void AutoSlide()
-    {
-        transform.position += Vector3.right * moveSpeed * Time.fixedDeltaTime;
-    }
+{
+    if (levelFinished)
+        return;
+
+    transform.position += Vector3.right * moveSpeed * Time.fixedDeltaTime;
+}
 
     void CheckGround()
     {
@@ -262,6 +271,7 @@ public class GeometryPlayer : MonoBehaviour
 
 void ResetLevel()
 {
+    deathCount++;
     transform.position = startPosition;
 
     if (rb != null)
@@ -273,5 +283,35 @@ void ResetLevel()
     moveSpeed = 6f;
     UpdateSpeedUI();
     SetActionText("Reset");
+    
+}
+
+void OnTriggerEnter2D(Collider2D collision)
+{
+    if (collision.CompareTag("End"))
+    {
+        FinishLevel();
+    }
+}
+
+void FinishLevel()
+{
+    levelFinished = true;
+    moveSpeed = 0f;
+
+    if (rb != null)
+    {
+        rb.velocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+    }
+
+    float totalTime = Time.time - levelStartTime;
+
+    SetActionText("Level Complete!");
+
+    if (resultText != null)
+    {
+        resultText.text = "Level Complete!\nTime: " + totalTime.ToString("F1") + "s\nDeaths: " + deathCount;
+    }
 }
 }
