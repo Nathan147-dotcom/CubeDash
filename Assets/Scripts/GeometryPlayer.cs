@@ -40,12 +40,14 @@ public class GeometryPlayer : MonoBehaviour
 
     private float holdStartTime;
     private Vector2 touchStartPos;
+    private Vector3 startPosition;
 
     private float tapThreshold = 0.2f;
     private float swipeThreshold = 80f;
 
     void Start()
     {
+        startPosition = transform.position;
         rb = GetComponent<Rigidbody2D>();
 
         if (chargeBarFill != null)
@@ -249,4 +251,27 @@ public class GeometryPlayer : MonoBehaviour
             Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
         }
     }
+
+    void OnCollisionEnter2D(Collision2D collision)
+{
+    if (collision.gameObject.CompareTag("Spike"))
+    {
+        ResetLevel();
+    }
+}
+
+void ResetLevel()
+{
+    transform.position = startPosition;
+
+    if (rb != null)
+    {
+        rb.velocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+    }
+
+    moveSpeed = 6f;
+    UpdateSpeedUI();
+    SetActionText("Reset");
+}
 }
